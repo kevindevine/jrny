@@ -6,9 +6,6 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  experimental: {
-    // Remove any experimental options that might be causing issues
-  }
 }
 
 module.exports = nextConfig
