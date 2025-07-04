@@ -77,8 +77,14 @@ const PlanImportInterface = ({ onPlanCreated }: { onPlanCreated?: () => void }) 
         total_weeks: totalWeeks,
         taper_start_week: totalWeeks - (blockData.taper_weeks || 2),
       }),
+      credentials: 'include', // <-- Ensure cookies are sent!
     });
-    
+
+    if (blockResponse.status === 401) {
+      window.location.href = '/auth/login';
+      return;
+    }
+
     if (!blockResponse.ok) {
       throw new Error('Failed to create training block');
     }
@@ -86,20 +92,36 @@ const PlanImportInterface = ({ onPlanCreated }: { onPlanCreated?: () => void }) 
     return await blockResponse.json();
   };
 
+  const ensureAuthenticated = async () => {
+    const res = await fetch('/api/strava/activities', { credentials: 'include' });
+    if (res.status === 401) {
+      window.location.href = '/auth/login';
+      return false;
+    }
+    return true;
+  };
+
   const handleSkipWithBasicPlan = async () => {
     setProcessing(true);
-    
+
+    // Check authentication first
+    const isAuthed = await ensureAuthenticated();
+    if (!isAuthed) {
+      setProcessing(false);
+      return;
+    }
+
     try {
       const block = await createTrainingBlock();
       console.log('Basic training block created:', block);
-      
+
       setSuccess(true);
-      
+
       // Call the callback if provided
       if (onPlanCreated) {
         onPlanCreated();
       }
-      
+
     } catch (error) {
       console.error('Error:', error);
       alert('Failed to create training plan. Please try again.');
@@ -110,22 +132,29 @@ const PlanImportInterface = ({ onPlanCreated }: { onPlanCreated?: () => void }) 
 
   const handleSubmit = async () => {
     setProcessing(true);
-    
+
+    // Check authentication first
+    const isAuthed = await ensureAuthenticated();
+    if (!isAuthed) {
+      setProcessing(false);
+      return;
+    }
+
     try {
       const block = await createTrainingBlock();
       console.log('Training block created:', block);
-      
+
       // TODO: Process uploaded photos with OCR
       // For now, just log the files
       console.log(`${uploadedFiles.length} photos ready for OCR processing`);
-      
+
       setSuccess(true);
-      
+
       // Call the callback if provided
       if (onPlanCreated) {
         onPlanCreated();
       }
-      
+
     } catch (error) {
       console.error('Error:', error);
       alert('Failed to import plan. Please try again.');

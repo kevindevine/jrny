@@ -30,6 +30,7 @@ interface SessionData {
     time?: string;
     stravaId?: string;
   } | null;
+  stravaActivities?: any[]; // <-- Add this line
 }
 
 export default function TrainingDashboard() {
@@ -80,12 +81,17 @@ export default function TrainingDashboard() {
   const loadWeekActivities = async (block: TrainingBlock) => {
     try {
       console.log('📡 Loading Strava activities...');
-      const response = await fetch('/api/strava/activities');
-      
+      const response = await fetch('/api/strava/activities', { credentials: 'include' });
+
+      if (response.status === 401) {
+        window.location.href = '/auth/login';
+        return;
+      }
+
       if (response.ok) {
         const activities = await response.json();
-        console.log('🏃‍♂️ Strava activities loaded:', activities?.length || 0);
-        
+        console.log('Loaded activities:', activities); // <-- Move here!
+
         // Make sure activities is an array
         if (Array.isArray(activities)) {
           setSessions(activities);
@@ -163,18 +169,17 @@ export default function TrainingDashboard() {
       };
       
       // Find matching Strava activity for this date from the loaded sessions state
-      const stravaActivity = Array.isArray(sessions) ? sessions.find((activity: any) => {
+      const stravaActivities = Array.isArray(sessions) ? sessions.filter((activity: any) => {
         if (!activity.start_date) return false;
-        const activityDate = activity.start_date.split('T')[0];
-        const matches = activityDate === dateStr;
-        if (matches) {
-          console.log('✅ Found matching activity for', dateStr, ':', activity.name);
-        }
-        return matches;
-      }) : null;
+        // Convert both to local date string (YYYY-MM-DD)
+        const activityDate = new Date(activity.start_date).toLocaleDateString('en-CA');
+        // Only include runs
+        return activityDate === dateStr && activity.type === 'Run';
+      }) : [];
       
       let completed = null;
-      if (stravaActivity) {
+      if (stravaActivities.length > 0) {
+        const stravaActivity = stravaActivities[0];
         const distanceKm = (stravaActivity.distance / 1000).toFixed(1);
         const pace = formatPaceFromSpeed(stravaActivity.average_speed);
         const time = formatDuration(stravaActivity.moving_time);
@@ -191,11 +196,11 @@ export default function TrainingDashboard() {
       }
       
       weekData.push({
-        date: dateStr,
-        dayName: dayNames[i],
-        planned: sessions_static[i as keyof typeof sessions_static],
-        completed: completed
-      });
+  date: dateStr,
+  dayName: dayNames[i],
+  planned: sessions_static[i as keyof typeof sessions_static],
+  stravaActivities // <-- pass all activities for the day
+});
     }
     
     console.log('📊 Generated week data:', weekData.filter(d => d.completed).length, 'completed sessions');
@@ -462,32 +467,33 @@ export default function TrainingDashboard() {
                   <div className="text-xs text-gray-500 mb-2 italic">{day.planned.details}</div>
                 )}
 
-                {day.completed && (
-                  <div className={`text-xs border-t pt-2 mt-2 ${
-                    isToday(day.date) ? 'border-orange-200' : 'border-gray-200'
-                  }`}>
-                    <div className="flex items-center gap-2 text-green-600">
-                      <CheckCircle className="w-3 h-3" />
-                      <span className="font-medium">
-                        {day.completed.type === 'Rest' ? 'Completed' :
-                         `${day.completed.distance} • ${day.completed.pace} avg`}
-                      </span>
-                      {day.completed.stravaId && (
-                        <a 
-                          href={`https://www.strava.com/activities/${day.completed.stravaId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-orange-500 hover:text-orange-600 text-xs font-medium"
-                        >
-                          View on Strava
-                        </a>
-                      )}
-                    </div>
-                    {day.completed.time && (
-                      <div className="text-gray-500 ml-5">{day.completed.time}</div>
-                    )}
-                  </div>
-                )}
+            {day.stravaActivities && day.stravaActivities.length > 0 ? (
+  <div className={`text-xs border-t pt-2 mt-2 ${
+    isToday(day.date) ? 'border-orange-200' : 'border-gray-200'
+  }`}>
+    {day.stravaActivities.map((act: any) => (
+      <div key={act.id} className="flex items-center gap-2 text-green-600 mb-1">
+        <CheckCircle className="w-3 h-3" />
+        <span className="font-medium">
+          {`${(act.distance / 1000).toFixed(1)}km • ${formatPaceFromSpeed(act.average_speed)} avg`}
+        </span>
+        <a
+          href={`https://www.strava.com/activities/${act.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-orange-500 hover:text-orange-600 text-xs font-medium"
+        >
+          View on Strava
+        </a>
+        <span className="text-gray-500 ml-2">{formatDuration(act.moving_time)}</span>
+      </div>
+    ))}
+  </div>
+) : (
+  <div className="text-xs text-gray-400 border-t border-gray-200 pt-2 mt-2 italic">
+    Rest Day 
+  </div>
+)}
 
                 {!day.completed && !isPast(day.date) && day.planned.type !== 'Rest' && !isToday(day.date) && (
                   <div className="text-xs text-gray-400 border-t border-gray-200 pt-2 mt-2 italic">
@@ -529,6 +535,19 @@ export default function TrainingDashboard() {
             <h1 className="text-xl font-black text-center text-white tracking-tighter drop-shadow-lg italic transform -skew-x-6" style={{fontFamily: 'system-ui, -apple-system, sans-serif', letterSpacing: '-0.05em'}}>
               JRNY
             </h1>
+          // Replace your current Sync Strava button with this for a cleaner look:
+<button
+  title="Sync Strava"
+  onClick={async () => {
+    await fetch('/api/strava/sync', { method: 'POST', credentials: 'include' });
+    window.location.reload();
+  }}
+  className="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-full p-2 ml-2 transition"
+>
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582M20 20v-5h-.581M5.635 19.364A9 9 0 104.582 9.582" />
+  </svg>
+</button>
           </div>
         </div>
 
@@ -541,11 +560,9 @@ export default function TrainingDashboard() {
               {/* Strava Connection */}
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
                 <h3 className="text-lg font-semibold text-white mb-4">Connect Strava</h3>
-                
                 <p className="text-white/80 text-sm mb-4">
                   Connect your Strava account to automatically sync your runs.
                 </p>
-                
                 <button
                   onClick={() => window.location.href = '/api/auth/strava'}
                   className="w-full bg-orange-500 text-white px-4 py-3 rounded-md hover:bg-orange-600 font-medium"
@@ -559,6 +576,17 @@ export default function TrainingDashboard() {
                 <h3 className="text-lg font-semibold text-white mb-4">More Settings</h3>
                 <p className="text-white/60 text-sm">Additional settings coming soon...</p>
               </div>
+
+              {/* Logout Button */}
+              <button
+                onClick={async () => {
+                  await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+                  window.location.href = '/auth/login';
+                }}
+                className="w-full bg-gray-700 text-white px-4 py-3 rounded-md hover:bg-gray-800 font-medium"
+              >
+                Log Out
+              </button>
             </div>
           )}
         </div>

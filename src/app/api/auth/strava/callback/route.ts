@@ -32,7 +32,13 @@ export async function GET(request: NextRequest) {
     
     // Create Supabase client with new method
     const cookieStore = await cookies();
-    
+
+    // Debug: Log all cookies
+    console.log('🍪 Cookies:', cookieStore.getAll());
+
+    // Debug: Log Supabase env vars
+    console.log('🌍 ENV:', process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
