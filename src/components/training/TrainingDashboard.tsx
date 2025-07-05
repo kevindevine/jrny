@@ -154,6 +154,8 @@ export default function TrainingDashboard() {
  const generateWeekData = (weekNumber: number): SessionData[] => {
   const originalStartDate = new Date(trainingBlock?.start_date || new Date());
   
+
+  
   // Find the Monday of the week containing the start date
   const startDayOfWeek = originalStartDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
   const daysToSubtract = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
