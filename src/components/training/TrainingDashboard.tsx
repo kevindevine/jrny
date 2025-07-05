@@ -622,40 +622,65 @@ if (i === 0) console.log(`📅 Your activities this week:`, sessions.slice(0, 5)
         <div className="p-6 pb-24">
           {activeTab === 'training' && <TrainingTimeline />}
           {activeTab === 'progress' && <div>Progress Dashboard (Coming Soon)</div>}
-          {activeTab === 'settings' && (
-            <div className="space-y-6">
-              {/* Strava Connection */}
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-                <h3 className="text-lg font-semibold text-white mb-4">Connect Strava</h3>
-                <p className="text-white/80 text-sm mb-4">
-                  Connect your Strava account to automatically sync your runs.
-                </p>
-                <button
-                  onClick={() => window.location.href = '/api/auth/strava'}
-                  className="w-full bg-orange-500 text-white px-4 py-3 rounded-md hover:bg-orange-600 font-medium"
-                >
-                  Connect Strava
-                </button>
-              </div>
+{activeTab === 'settings' && (
+  <div className="space-y-6">
+    {/* Strava Connection Status */}
+    <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+      <h3 className="text-lg font-semibold text-white mb-4">Strava Integration</h3>
+      
+      {trainingBlock ? (
+        // Connected state
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+            <p className="text-green-400 text-sm font-medium">
+              Strava Connected
+            </p>
+          </div>
+          <p className="text-white/80 text-sm mb-4">
+            Your Strava activities are automatically syncing to your training plan.
+          </p>
+          <button
+            onClick={() => window.location.href = '/api/auth/strava'}
+            className="w-full bg-white/20 text-white px-4 py-3 rounded-md hover:bg-white/30 font-medium border border-white/30"
+          >
+            Reconnect Strava
+          </button>
+        </div>
+      ) : (
+        // Not connected state  
+        <div>
+          <p className="text-white/80 text-sm mb-4">
+            Connect your Strava account to automatically sync your runs.
+          </p>
+          <button
+            onClick={() => window.location.href = '/api/auth/strava'}
+            className="w-full bg-[#FC4C02] text-white px-4 py-3 rounded-md hover:bg-[#E8440B] font-medium"
+          >
+            Connect Strava
+          </button>
+        </div>
+      )}
+    </div>
 
-              {/* Coming Soon */}
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-                <h3 className="text-lg font-semibold text-white mb-4">More Settings</h3>
-                <p className="text-white/60 text-sm">Additional settings coming soon...</p>
-              </div>
+    {/* Coming Soon 
+    <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+      <h3 className="text-lg font-semibold text-white mb-4">More Settings</h3>
+      <p className="text-white/60 text-sm">Additional settings coming soon...</p>
+    </div>*/}
 
-              {/* Logout Button */}
-              <button
-                onClick={async () => {
-                  await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-                  window.location.href = '/auth/login';
-                }}
-                className="w-full bg-gray-700 text-white px-4 py-3 rounded-md hover:bg-gray-800 font-medium"
-              >
-                Log Out
-              </button>
-            </div>
-          )}
+    {/* Logout Button */}
+    <button
+      onClick={async () => {
+        await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+        window.location.href = '/auth/login';
+      }}
+      className="w-full bg-gray-700 text-white px-4 py-3 rounded-md hover:bg-gray-800 font-medium"
+    >
+      Log Out
+    </button>
+  </div>
+)}
         </div>
 
         {/* Bottom Navigation */}
