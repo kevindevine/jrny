@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, TrendingUp, Settings, CheckCircle, Loader2, User, Link, Camera, LogOut, ExternalLink } from 'lucide-react';
-
+import RaceOverview from './RaceOverview';
 interface TrainingBlock {
   id: string;
   name: string;
@@ -339,9 +339,15 @@ if (i === 0) console.log(`📅 Your activities this week:`, sessions.slice(0, 5)
     };
 
     return (
+
+
+
+
+
+
       <div className="space-y-6">
         {/* Progress Block with Real Data */}
-        <div className="bg-gradient-to-r from-orange-400 to-red-500 p-6 rounded-lg shadow-xl relative overflow-hidden">
+       {/* <div className="bg-gradient-to-r from-orange-400 to-red-500 p-6 rounded-lg shadow-xl relative overflow-hidden">
           <div className="absolute inset-x-0 top-3 bottom-0 opacity-20">
             <svg className="w-full h-full" viewBox="0 0 100 30" preserveAspectRatio="none">
               <defs>
@@ -409,7 +415,16 @@ if (i === 0) console.log(`📅 Your activities this week:`, sessions.slice(0, 5)
               />
             ))}
           </div>
-        </div>
+        </div>*/}
+
+<RaceOverview 
+  trainingBlock={trainingBlock}
+  currentWeek={currentWeek}
+  onUpdate={(updatedBlock) => {
+    setTrainingBlock(updatedBlock);
+  }}
+/>
+
 
         {/* Week Navigation */}
         <div className="py-4">
