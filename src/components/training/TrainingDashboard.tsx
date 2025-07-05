@@ -174,9 +174,16 @@ export default function TrainingDashboard() {
         // Convert both to local date string (YYYY-MM-DD)
         const activityDate = new Date(activity.start_date).toLocaleDateString('en-CA');
         // Only include runs
-        return activityDate === dateStr && activity.type === 'Run';
+        return activityDate === dateStr; 
       }) : [];
-      
+
+      // ADD THIS DEBUG LINE:
+if (i === 0) console.log(`🔍 Monday ${dateStr} - checking ${sessions.length} activities. First activity date: ${sessions[0]?.start_date}, formatted: ${new Date(sessions[0]?.start_date).toLocaleDateString('en-CA')}`);
+if (i === 0) console.log(`📅 Your activities this week:`, sessions.slice(0, 5).map(a => ({ 
+  name: a.name, 
+  date: a.start_date?.split('T')[0],
+  type: a.type 
+})));      
       let completed = null;
       if (stravaActivities.length > 0) {
         const stravaActivity = stravaActivities[0];
@@ -415,9 +422,20 @@ export default function TrainingDashboard() {
               ←
             </button>
             <div className="text-center">
-              <h3 className="font-bold text-xl text-white/90">Week {currentWeek}</h3>
-              <div className="text-sm text-white/70">Target 90km</div>
-            </div>
+  <h3 className="font-bold text-xl text-white/90">Week {currentWeek}</h3>
+  <div className="text-sm text-white/70">
+    {(() => {
+      const weekTotal = timelineData.reduce((total, day) => {
+        if (day.stravaActivities && day.stravaActivities.length > 0) {
+          return total + day.stravaActivities.reduce((dayTotal: number, act: any) => dayTotal + act.distance, 0);
+        }
+        return total;
+      }, 0);
+      const weekTotalKm = (weekTotal / 1000).toFixed(1);
+      return weekTotal > 0 ? `${weekTotalKm}km this week` : 'Target 90km';
+    })()}
+  </div>
+</div>
             <button 
               onClick={() => currentWeek < trainingBlock.total_weeks && setCurrentWeek(prev => prev + 1)}
               className={`w-10 h-10 rounded-full flex items-center justify-center ${currentWeek < trainingBlock.total_weeks ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-white/10 text-white/40'}`}
@@ -444,30 +462,61 @@ export default function TrainingDashboard() {
                 isPast(day.date) ? 'bg-gray-50/80 border-gray-200' : 'bg-white border-gray-100 hover:shadow-lg'
               }`}>
                 
-                <div className="flex items-center justify-between mb-3">
-                  <div className={`flex items-center gap-2 ${
-                    isToday(day.date) ? 'text-orange-700' : 'text-gray-700'
-                  }`}>
-                    <span className={`text-sm font-medium ${day.planned.type === 'Long Run' ? 'text-purple-700 font-bold' : ''}`}>
-                      {day.planned.type === 'Rest' ? 'Rest Day' : 
-                       `${day.planned.distance} ${day.planned.type}`}
-                    </span>
-                    {day.planned.type === 'Long Run' && (
-                      <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-semibold">
-                        KEY RUN
-                      </span>
-                    )}
-                  </div>
-                </div>
+               
+<div className="flex items-center justify-between mb-3">
+  <div className={`flex items-center gap-2 ${
+    isToday(day.date) ? 'text-orange-700' : 'text-gray-700'
+  }`}>
+    {day.stravaActivities && day.stravaActivities.length > 0 ? (
+      // Show real Strava data when activities exist
+      <>
+        <span className="text-sm font-medium">
+          {day.stravaActivities.length === 1 
+            ? day.stravaActivities[0].name 
+            : `${day.stravaActivities.length} runs`
+          }
+        </span>
+        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">
+          {((day.stravaActivities.reduce((total: number, act: any) => total + act.distance, 0)) / 1000).toFixed(1)}km
+        </span>
+      </>
+    ) : (
+      // Show planned session when no activities
+      <>
+        <span className={`text-sm font-medium ${day.planned.type === 'Long Run' ? 'text-purple-700 font-bold' : ''}`}>
+          {day.planned.type === 'Rest' ? 'Rest Day' : 
+           `${day.planned.distance} ${day.planned.type}`}
+        </span>
+        {day.planned.type === 'Long Run' && (
+          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-semibold">
+            KEY RUN
+          </span>
+        )}
+      </>
+    )}
+  </div>
+</div>
 
-                {day.planned.pace && (
+{/* Show planned details only when no Strava activities */}
+{(!day.stravaActivities || day.stravaActivities.length === 0) && day.planned.pace && (
+  <div className="text-xs text-gray-500 mb-2">{day.planned.pace}</div>
+)}
+{(!day.stravaActivities || day.stravaActivities.length === 0) && day.planned.details && (
+  <div className="text-xs text-gray-500 mb-2 italic">{day.planned.details}</div>
+)}
+
+                {/*{day.planned.pace && (
                   <div className="text-xs text-gray-500 mb-2">{day.planned.pace}</div>
                 )}
                 {day.planned.details && (
                   <div className="text-xs text-gray-500 mb-2 italic">{day.planned.details}</div>
-                )}
+                )}*/}
 
-            {day.stravaActivities && day.stravaActivities.length > 0 ? (
+{console.log(`🔍 Day ${day.date}:`, { 
+  stravaActivities: day.stravaActivities, 
+  length: day.stravaActivities?.length 
+}) || null}
+{day.stravaActivities && day.stravaActivities.length > 1 ? (
   <div className={`text-xs border-t pt-2 mt-2 ${
     isToday(day.date) ? 'border-orange-200' : 'border-gray-200'
   }`}>
@@ -475,25 +524,36 @@ export default function TrainingDashboard() {
       <div key={act.id} className="flex items-center gap-2 text-green-600 mb-1">
         <CheckCircle className="w-3 h-3" />
         <span className="font-medium">
-          {`${(act.distance / 1000).toFixed(1)}km • ${formatPaceFromSpeed(act.average_speed)} avg`}
+          {act.name} • {(act.distance / 1000).toFixed(1)}km
         </span>
-        <a
+        <a 
           href={`https://www.strava.com/activities/${act.id}`}
           target="_blank"
           rel="noopener noreferrer"
           className="text-orange-500 hover:text-orange-600 text-xs font-medium"
         >
-          View on Strava
+          Strava
         </a>
-        <span className="text-gray-500 ml-2">{formatDuration(act.moving_time)}</span>
       </div>
     ))}
   </div>
-) : (
-  <div className="text-xs text-gray-400 border-t border-gray-200 pt-2 mt-2 italic">
-    Rest Day 
+) : day.stravaActivities && day.stravaActivities.length === 1 ? (
+  <div className={`text-xs border-t pt-2 mt-2 ${
+    isToday(day.date) ? 'border-orange-200' : 'border-gray-200'
+  }`}>
+    <div className="flex items-center gap-2 text-green-600">
+      <CheckCircle className="w-3 h-3" />
+      
+        <a href={`https://www.strava.com/activities/${day.stravaActivities[0].id}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-orange-500 hover:text-orange-600 text-xs font-medium"
+      >
+        View on Strava
+      </a>
+    </div>
   </div>
-)}
+) : null}
 
                 {!day.completed && !isPast(day.date) && day.planned.type !== 'Rest' && !isToday(day.date) && (
                   <div className="text-xs text-gray-400 border-t border-gray-200 pt-2 mt-2 italic">
@@ -501,11 +561,11 @@ export default function TrainingDashboard() {
                   </div>
                 )}
 
-                {!day.completed && isToday(day.date) && day.planned.type !== 'Rest' && (
-                  <div className="text-xs text-orange-600 border-t border-orange-200 pt-2 mt-2 italic">
-                    Today's session - connect Strava to sync!
-                  </div>
-                )}
+                {!day.stravaActivities?.length && isToday(day.date) && day.planned.type !== 'Rest' && (
+  <div className="text-xs text-orange-600 border-t border-orange-200 pt-2 mt-2 italic">
+    Today's session - connect Strava to sync!
+  </div>
+)}
               </div>
             </div>
           ))}
