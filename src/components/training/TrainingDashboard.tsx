@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, TrendingUp, Settings, CheckCircle, Loader2, User, Link, Camera, LogOut, ExternalLink } from 'lucide-react';
 import RaceOverview from './RaceOverview';
 import StravaSyncButton, { HeaderWithSync } from '../StravaSyncButton';
-
-
+import ResetTrainingBlock from '../settings/ResetTrainingBlock';
 
 interface TrainingBlock {
   id: string;
@@ -61,18 +60,25 @@ export default function TrainingDashboard() {
       const blocks = await response.json();
       console.log('📊 Training blocks loaded:', blocks);
       
-      if (blocks && blocks.length > 0) {
-        // Get the most recent active block
-        const activeBlock = blocks.find((block: TrainingBlock) => block.status === 'active') || blocks[0];
-        setTrainingBlock(activeBlock);
-        setCurrentWeek(activeBlock.current_week || 1);
-        console.log('✅ Active training block:', activeBlock);
-        
-        // Load Strava activities for this week
-        await loadWeekActivities(activeBlock);
-      } else {
-        setError('No training blocks found');
-      }
+   if (blocks && blocks.length > 0) {
+  // Only get active blocks
+  const activeBlock = blocks.find((block: TrainingBlock) => block.status === 'active');
+  
+  if (activeBlock) {
+    setTrainingBlock(activeBlock);
+    setCurrentWeek(activeBlock.current_week || 1);
+    console.log('✅ Active training block:', activeBlock);
+    
+    // Load Strava activities for this week
+    await loadWeekActivities(activeBlock);
+  } else {
+    console.log('🎯 No active training block found - should trigger onboarding');
+    setTrainingBlock(null);
+    setError('No active training block'); // This should trigger onboarding
+  }
+} else {
+  setError('No training blocks found');
+}
       
     } catch (err: any) {
       console.error('💥 Error loading training data:', err);
@@ -145,32 +151,40 @@ export default function TrainingDashboard() {
   }, [trainingBlock]);
 
   // Generate week data with real Strava activities
-  const generateWeekData = (weekNumber: number): SessionData[] => {
-    const startDate = new Date(trainingBlock?.start_date || new Date());
-    const weekOffset = (weekNumber - 1) * 7;
+ const generateWeekData = (weekNumber: number): SessionData[] => {
+  const originalStartDate = new Date(trainingBlock?.start_date || new Date());
+  
+  // Find the Monday of the week containing the start date
+  const startDayOfWeek = originalStartDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  const daysToSubtract = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
+  
+  const mondayOfStartWeek = new Date(originalStartDate);
+  mondayOfStartWeek.setDate(originalStartDate.getDate() - daysToSubtract);
+  
+  const weekOffset = (weekNumber - 1) * 7;
     
     const weekData: SessionData[] = [];
     const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     
     console.log('🔍 Generating week data for week', weekNumber);
-    console.log('📅 Start date:', startDate.toISOString());
+    console.log('📅 Start date:', originalStartDate.toISOString());
+console.log('📅 Monday of start week:', mondayOfStartWeek.toISOString());
     console.log('🏃‍♂️ Available activities:', sessions.length);
     
     for (let i = 0; i < 7; i++) {
-      const date = new Date(startDate);
-      date.setDate(startDate.getDate() + weekOffset + i);
-      const dateStr = date.toISOString().split('T')[0];
-      
+      const date = new Date(mondayOfStartWeek);
+date.setDate(mondayOfStartWeek.getDate() + weekOffset + i);
+      const dateStr = date.toLocaleDateString('en-CA'); // YYYY-MM-DD format in local timezone
       // Mock planned sessions (until we have real session data)
-      const sessions_static = {
-        0: { type: 'Rest', details: null },
-        1: { type: 'Tempo', distance: '10km', pace: '4:30-4:35', details: '3km warm up, 4km tempo, 3km cool down' },
-        2: { type: 'Easy', distance: '12km', pace: '4:30-4:35', details: 'Recovery run, keep it comfortable' },
-        3: { type: 'Intervals', distance: '8km', pace: '3:30-3:45', details: '3km warm up, 6x800m at 3:30, 1km cool down' },
-        4: { type: 'Rest', details: null },
-        5: { type: 'Long Run', distance: '20km', pace: '4:15-4:25', details: 'Build to marathon pace in final 10km' },
-        6: { type: 'Easy', distance: '6km', pace: '4:45-5:00', details: 'Recovery jog' }
-      };
+     const sessions_static = {
+  0: { type: '', details: null },
+  1: { type: '', details: null },
+  2: { type: '', details: null },
+  3: { type: '', details: null },
+  4: { type: '', details: null },
+  5: { type: '', details: null },
+  6: { type: '', details: null }
+};
       
       // Find matching Strava activity for this date from the loaded sessions state
       const stravaActivities = Array.isArray(sessions) ? sessions.filter((activity: any) => {
@@ -266,36 +280,86 @@ if (i === 0) console.log(`📅 Your activities this week:`, sessions.slice(0, 5)
     );
   }
 
-  if (error || !trainingBlock) {
+if (error || !trainingBlock) {
+  // If it's specifically "no active training block", trigger onboarding instead of error
+  if (error === 'No active training block') {
+    // Create empty training block for onboarding
+    const emptyBlock: TrainingBlock = {
+      id: '',
+      name: '',
+      race_name: '',
+      race_date: '',
+      goal_time: null,
+      start_date: new Date().toISOString().split('T')[0],
+      total_weeks: 18,
+      current_week: 1,
+      taper_start_week: 16,
+      status: 'active'
+    };
+
     return (
       <div className="max-w-md mx-auto min-h-screen relative overflow-hidden">
+        {/* Your existing background styling */}
+        <div className="absolute inset-0 bg-gradient-to-br from-orange-300/30 via-red-300/20 to-purple-300/30"></div>
         <div className="absolute inset-0 bg-gradient-to-br from-slate-900/90 via-blue-900/85 to-purple-900/90"></div>
         
-        <div className="relative z-10 flex items-center justify-center min-h-screen p-6">
-          <div className="text-center">
-            <h1 className="text-4xl font-black text-white tracking-tighter drop-shadow-lg italic transform -skew-x-6 mb-8">
-              JRNY
-            </h1>
-            
-            <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-6 mb-6">
-              <p className="text-red-200 mb-4">
-                Unable to load your training plan
-              </p>
-              <p className="text-red-300/80 text-sm mb-4">
-                {error || 'No training plan found'}
-              </p>
-              <button 
-                onClick={loadTrainingData}
-                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
-              >
-                Try Again
-              </button>
+        <div className="relative z-10">
+          <div className="sticky top-0 z-20">
+            <div className="py-3">
+              <h1 className="text-xl font-black text-center text-white tracking-tighter drop-shadow-lg italic transform -skew-x-6">
+                JRNY
+              </h1>
             </div>
+          </div>
+
+          <div className="p-6">
+            {/* This will trigger onboarding since race_name is empty */}
+            <RaceOverview 
+              trainingBlock={emptyBlock}
+              currentWeek={1}
+              onUpdate={(updatedBlock) => {
+                console.log('📝 New training block created:', updatedBlock);
+                // Reload to show the new block
+                window.location.reload();
+              }}
+            />
           </div>
         </div>
       </div>
     );
   }
+
+  // For other errors, show the error screen
+  return (
+    <div className="max-w-md mx-auto min-h-screen relative overflow-hidden">
+      {/* Your existing error display code */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-900/90 via-blue-900/85 to-purple-900/90"></div>
+      
+      <div className="relative z-10 flex items-center justify-center min-h-screen p-6">
+        <div className="text-center">
+          <h1 className="text-4xl font-black text-white tracking-tighter drop-shadow-lg italic transform -skew-x-6 mb-8">
+            JRNY
+          </h1>
+          
+          <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-6 mb-6">
+            <p className="text-red-200 mb-4">
+              Unable to load your training plan
+            </p>
+            <p className="text-red-300/80 text-sm mb-4">
+              {error || 'No training plan found'}
+            </p>
+            <button 
+              onClick={loadTrainingData}
+              className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
   const timelineData = generateWeekData(currentWeek);
 
@@ -500,18 +564,12 @@ if (i === 0) console.log(`📅 Your activities this week:`, sessions.slice(0, 5)
         </span>
       </>
     ) : (
-      // Show planned session when no activities
-      <>
-        <span className={`text-sm font-medium ${day.planned.type === 'Long Run' ? 'text-purple-700 font-bold' : ''}`}>
-          {day.planned.type === 'Rest' ? 'Rest Day' : 
-           `${day.planned.distance} ${day.planned.type}`}
-        </span>
-        {day.planned.type === 'Long Run' && (
-          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-semibold">
-            KEY RUN
-          </span>
-        )}
-      </>
+      
+      // Show generic message when no activities
+      <span className="text-sm font-medium text-gray-500">
+        {isPast(day.date) ? 'Rest day' : 'Planned training'}
+      </span>
+    
     )}
   </div>
 </div>
@@ -575,8 +633,8 @@ if (i === 0) console.log(`📅 Your activities this week:`, sessions.slice(0, 5)
 ) : null}
 
                 {!day.completed && !isPast(day.date) && day.planned.type !== 'Rest' && !isToday(day.date) && (
-                  <div className="text-xs text-gray-400 border-t border-gray-200 pt-2 mt-2 italic">
-                    Planned session
+                <div className="text-xs text-gray-400 border-t border-gray-200 pt-2 mt-2 italic">
+                    {/* Planned session*/}
                   </div>
                 )}
 
@@ -624,12 +682,26 @@ if (i === 0) console.log(`📅 Your activities this week:`, sessions.slice(0, 5)
           {activeTab === 'progress' && <div>Progress Dashboard (Coming Soon)</div>}
 {activeTab === 'settings' && (
   <div className="space-y-6">
-    {/* Strava Connection Status */}
+    {/* Reset Training Block Section - ADD THIS */}
+    <ResetTrainingBlock 
+      currentBlock={trainingBlock ? {
+        id: trainingBlock.id,
+        race_name: trainingBlock.race_name,
+        race_date: trainingBlock.race_date,
+        current_week: trainingBlock.current_week,
+        total_weeks: trainingBlock.total_weeks
+      } : undefined}
+      onReset={() => {
+        console.log('🔄 Training block reset - reloading page...');
+        window.location.reload();
+      }}
+    />
+
+    {/* Your existing Strava Connection Status - KEEP THIS */}
     <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
       <h3 className="text-lg font-semibold text-white mb-4">Strava Integration</h3>
       
       {trainingBlock ? (
-        // Connected state
         <div>
           <div className="flex items-center gap-2 mb-4">
             <div className="w-3 h-3 bg-green-400 rounded-full"></div>
@@ -648,14 +720,13 @@ if (i === 0) console.log(`📅 Your activities this week:`, sessions.slice(0, 5)
           </button>
         </div>
       ) : (
-        // Not connected state  
         <div>
           <p className="text-white/80 text-sm mb-4">
             Connect your Strava account to automatically sync your runs.
           </p>
           <button
             onClick={() => window.location.href = '/api/auth/strava'}
-            className="w-full bg-[#FC4C02] text-white px-4 py-3 rounded-md hover:bg-[#E8440B] font-medium"
+            className="w-full bg-[#FC4C02] text-white px-4 py-3 rounded-md hover:bg-[E8440B] font-medium"
           >
             Connect Strava
           </button>
@@ -663,13 +734,7 @@ if (i === 0) console.log(`📅 Your activities this week:`, sessions.slice(0, 5)
       )}
     </div>
 
-    {/* Coming Soon 
-    <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-      <h3 className="text-lg font-semibold text-white mb-4">More Settings</h3>
-      <p className="text-white/60 text-sm">Additional settings coming soon...</p>
-    </div>*/}
-
-    {/* Logout Button */}
+    {/* Your existing Logout Button - KEEP THIS */}
     <button
       onClick={async () => {
         await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });

@@ -358,20 +358,19 @@ export default function RaceOverview({
         </svg>
       </div>
       
-      <div className="relative z-10 text-center">
+      
         {/* Edit button in top-right - MADE MORE VISIBLE FOR DEBUGGING */}
-        <button
-          onClick={() => {
-            console.log('Edit button clicked!');
-            setIsEditing(true);
-          }}
-          className="absolute top-2 right-2 p-3 bg-red-500 rounded-full hover:bg-red-600 transition-colors group border-2 border-white"
-          title="Edit race details"
-          style={{ zIndex: 50 }}
-        >
-          <Edit3 className="w-5 h-5 text-white group-hover:scale-110 transition-transform" />
-        </button>
-
+<button
+  onClick={() => {
+    console.log('Edit button clicked!');
+    setIsEditing(true);
+  }}
+  className="absolute top-4 right-6 px-2 py-1 text-white/50 hover:text-white/80 text-xs font-medium uppercase tracking-wider transition-all duration-200 hover:bg-white/10 rounded z-20"
+  title="Edit race details"
+>
+  Edit
+</button>
+<div className="relative z-10 text-center">
         {/* Your EXACT original content */}
         <div className="text-4xl font-black text-white drop-shadow-lg">{getDaysToRace()}</div>
         <div className="text-white/90 font-medium tracking-wide">days to {editForm.race_name}</div>

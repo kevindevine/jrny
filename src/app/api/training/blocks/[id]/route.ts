@@ -53,22 +53,23 @@ export async function PUT(
     console.log('📝 Update request body:', body);
     console.log('🆔 Training block ID:', params.id);
     
-    // Update the training block with new data including total_weeks
-    const { data: updatedBlock, error } = await supabase
-      .from('training_blocks')
-      .update({
-        race_name: body.race_name,
-        race_date: body.race_date,
-        goal_time: body.goal_time,
-        start_date: body.start_date,
-        total_weeks: body.total_weeks,
-        taper_start_week: body.taper_start_week,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', params.id)
-      .eq('user_id', user.id) // Security: only update user's own blocks
-      .select()
-      .single();
+  // Update the training block with new data including status
+const { data: updatedBlock, error } = await supabase
+  .from('training_blocks')
+  .update({
+    ...(body.race_name !== undefined && { race_name: body.race_name }),
+    ...(body.race_date !== undefined && { race_date: body.race_date }),
+    ...(body.goal_time !== undefined && { goal_time: body.goal_time }),
+    ...(body.start_date !== undefined && { start_date: body.start_date }),
+    ...(body.total_weeks !== undefined && { total_weeks: body.total_weeks }),
+    ...(body.taper_start_week !== undefined && { taper_start_week: body.taper_start_week }),
+    ...(body.status !== undefined && { status: body.status }),
+    updated_at: new Date().toISOString(),
+  })
+  .eq('id', params.id)
+  .eq('user_id', user.id) // Security: only update user's own blocks
+  .select()
+  .single();
 
     if (error) {
       console.error('💥 Database update error:', error);
