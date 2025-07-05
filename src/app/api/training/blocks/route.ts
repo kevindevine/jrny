@@ -101,7 +101,8 @@ export async function POST(request: NextRequest) {
     );
     
     const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
+    console.log('👤 User from auth:', user ? { id: user.id, email: user.email } : 'NULL');
+console.log('🔍 User error:', userError);
     console.log('👤 User check:', {
       user: user ? { id: user.id, email: user.email } : null,
       error: userError?.message || 'none'
@@ -114,7 +115,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     console.log('📝 Request body:', body);
-    
+    console.log('🆔 Using user_id for insert:', user.id);
     const { data: block, error } = await supabase
       .from('training_blocks')
       .insert({

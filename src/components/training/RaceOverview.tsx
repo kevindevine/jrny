@@ -36,13 +36,22 @@ export default function RaceOverview({
   currentWeek = 10, 
   onUpdate = () => {}
 }: RaceOverviewProps) {
-  const [isEditing, setIsEditing] = useState(false);
+  // Check if this is onboarding (empty race name indicates new setup)
+  const isOnboarding = !trainingBlock.race_name || trainingBlock.race_name === '';
+  
+  const [isEditing, setIsEditing] = useState(isOnboarding); // Start in edit mode if onboarding
   const [editForm, setEditForm] = useState<TrainingBlock>(trainingBlock);
   const [isSaving, setIsSaving] = useState(false);
 
   const calculateTotalWeeks = (): number => {
     const startDate = new Date(editForm.start_date);
     const raceDate = new Date(editForm.race_date);
+    
+    // Handle invalid dates
+    if (isNaN(startDate.getTime()) || isNaN(raceDate.getTime())) {
+      return 18; // Default fallback
+    }
+    
     const diffTime = raceDate.getTime() - startDate.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return Math.max(1, Math.ceil(diffDays / 7));
@@ -53,6 +62,12 @@ export default function RaceOverview({
   const getDaysToRace = (): number => {
     const today = new Date();
     const raceDate = new Date(editForm.race_date);
+    
+    // Handle invalid race date
+    if (isNaN(raceDate.getTime())) {
+      return 0; // Default fallback
+    }
+    
     const diffTime = raceDate.getTime() - today.getTime();
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
@@ -92,6 +107,13 @@ export default function RaceOverview({
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      // Validate required fields
+      if (!editForm.race_name || !editForm.race_date) {
+        alert('Please fill in both race name and race date before saving.');
+        setIsSaving(false);
+        return;
+      }
+
       // Calculate the new total weeks based on the dates
       const actualTotalWeeks = calculateTotalWeeks();
       
@@ -101,35 +123,76 @@ export default function RaceOverview({
         total_weeks: actualTotalWeeks  // This is the key update!
       };
 
-      // Make API call to update the database
-      const response = await fetch(`/api/training/blocks/${editForm.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
+      if (isOnboarding) {
+        // CREATE new training block for onboarding
+        console.log('🚀 Creating training block with data:', {
+          name: updatedBlock.name,
           race_name: updatedBlock.race_name,
           race_date: updatedBlock.race_date,
           goal_time: updatedBlock.goal_time,
           start_date: updatedBlock.start_date,
           total_weeks: updatedBlock.total_weeks,
           taper_start_week: updatedBlock.taper_start_week
-        })
-      });
+        });
 
-      if (response.ok) {
-        // Update the parent component with the new block data
-        onUpdate(updatedBlock);
-        setIsEditing(false);
-        
-        // Optionally reload the page to refresh all data
-        // window.location.reload();
+        const response = await fetch('/api/training/blocks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            name: updatedBlock.name,
+            race_name: updatedBlock.race_name,
+            race_date: updatedBlock.race_date,
+            goal_time: updatedBlock.goal_time || null, // Handle empty goal time
+            start_date: updatedBlock.start_date,
+            total_weeks: updatedBlock.total_weeks,
+            taper_start_week: updatedBlock.taper_start_week
+          })
+        });
+
+        console.log('📡 Response status:', response.status);
+        console.log('📡 Response ok:', response.ok);
+
+        if (response.ok) {
+          const createdBlock = await response.json();
+          console.log('✅ Created block:', createdBlock);
+          // Update the parent component with the new block data
+          onUpdate(updatedBlock);
+          setIsEditing(false);
+        } else {
+          const errorText = await response.text();
+          console.error('❌ API Error:', response.status, errorText);
+          alert('Failed to create training plan. Please check all fields and try again.');
+        }
       } else {
-        console.error('Failed to update training block');
-        // You could add user-facing error handling here
+        // UPDATE existing training block
+        const response = await fetch(`/api/training/blocks/${editForm.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            race_name: updatedBlock.race_name,
+            race_date: updatedBlock.race_date,
+            goal_time: updatedBlock.goal_time || null,
+            start_date: updatedBlock.start_date,
+            total_weeks: updatedBlock.total_weeks,
+            taper_start_week: updatedBlock.taper_start_week
+          })
+        });
+
+        if (response.ok) {
+          // Update the parent component with the new block data
+          onUpdate(updatedBlock);
+          setIsEditing(false);
+        } else {
+          const errorText = await response.text();
+          console.error('❌ API Error:', response.status, errorText);
+          alert('Failed to update training plan. Please try again.');
+        }
       }
     } catch (error) {
-      console.error('Error updating training block:', error);
-      // You could add user-facing error handling here
+      console.error('Error saving training block:', error);
+      alert('Network error. Please check your connection and try again.');
     } finally {
       setIsSaving(false);
     }
@@ -145,7 +208,9 @@ export default function RaceOverview({
       <div className="bg-gradient-to-r from-orange-400 to-red-500 p-6 rounded-lg shadow-xl relative overflow-hidden">
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-white font-bold text-xl">Edit Target Race</h3>
+            <h3 className="text-white font-bold text-xl">
+              {isOnboarding ? 'Set Up Your Race' : 'Edit Target Race'}
+            </h3>
             <button
               onClick={handleCancel}
               disabled={isSaving}
@@ -239,7 +304,7 @@ export default function RaceOverview({
             disabled={isSaving}
             className="w-full h-12 bg-white text-orange-600 font-semibold rounded-lg hover:bg-white/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSaving ? 'Updating...' : 'Update Target Race'}
+                        {isSaving ? 'Creating...' : (isOnboarding ? 'Create Training Plan' : 'Update Target Race')}
           </button>
 
           {isSaving && (
@@ -271,9 +336,9 @@ export default function RaceOverview({
             </mask>
           </defs>
           <rect
-            x={(currentWeek - 1) * (100 / Math.max(1, actualTotalWeeks - 1)) - (100 / Math.max(1, actualTotalWeeks - 1)) / 2}
+            x={Math.max(0, (currentWeek - 1) * (100 / Math.max(1, actualTotalWeeks - 1)) - (100 / Math.max(1, actualTotalWeeks - 1)) / 2)}
             y="0"
-            width={100 / Math.max(1, actualTotalWeeks - 1)}
+            width={Math.max(0, 100 / Math.max(1, actualTotalWeeks - 1))}
             height="30"
             fill="white"
             opacity="0.3"

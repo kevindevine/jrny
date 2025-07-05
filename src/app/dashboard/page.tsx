@@ -1,9 +1,23 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { Loader2, Target } from 'lucide-react';
 import TrainingDashboard from '@/components/training/TrainingDashboard';
-import PlanImportInterface from '@/components/onboarding/PlanImportInterface';
+import RaceOverview from '@/components/training/RaceOverview';
+
+interface TrainingBlock {
+  id: string;
+  name: string;
+  race_name: string;
+  race_date: string;
+  goal_time: string | null;
+  start_date: string;
+  total_weeks: number;
+  current_week: number;
+  taper_start_week: number;
+  status: string;
+}
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
@@ -20,20 +34,18 @@ export default function DashboardPage() {
       const response = await fetch("/api/training/blocks");
       
       console.log("📡 Response status:", response.status);
-      console.log("📡 Response ok:", response.ok);
       
       if (response.status === 401) {
-        console.log("🔐 User not authenticated - showing onboarding");
-        setHasTrainingPlan(false);
-        setLoading(false);
+        // User not authenticated - redirect to login
+        console.log("🔐 User not authenticated - redirecting to login");
+        window.location.href = '/auth/login';
         return;
       }
       
       if (!response.ok) {
         const errorText = await response.text();
         console.error("❌ API Error:", response.status, errorText);
-        
-        setHasTrainingPlan(false);
+        setError(`Failed to load training data: ${response.status}`);
         setLoading(false);
         return;
       }
@@ -48,14 +60,44 @@ export default function DashboardPage() {
       
     } catch (err: any) {
       console.error("💥 Error checking training plans:", err);
-      setHasTrainingPlan(false);
+      setError("Network error - please check your connection");
     } finally {
       setLoading(false);
     }
   };
-  const handlePlanCreated = () => {
-    // Called when user successfully creates a plan
-    setHasTrainingPlan(true);
+
+  const createTrainingBlock = async (blockData: TrainingBlock) => {
+    try {
+      console.log("📝 Creating new training block:", blockData);
+      
+      const response = await fetch('/api/training/blocks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: blockData.name,
+          race_name: blockData.race_name,
+          race_date: blockData.race_date,
+          goal_time: blockData.goal_time,
+          start_date: blockData.start_date,
+          total_weeks: blockData.total_weeks,
+          taper_start_week: blockData.taper_start_week
+        })
+      });
+
+      if (response.ok) {
+        console.log("✅ Training block created successfully");
+        setHasTrainingPlan(true);
+        // Reload to show the dashboard with new data
+        window.location.reload();
+      } else {
+        console.error("❌ Failed to create training block");
+        setError("Failed to create training plan");
+      }
+    } catch (error) {
+      console.error("💥 Error creating training block:", error);
+      setError("Network error - please try again");
+    }
   };
 
   if (loading) {
@@ -75,19 +117,16 @@ export default function DashboardPage() {
         
         <div className="relative z-10 flex items-center justify-center min-h-screen">
           <div className="text-center">
-            {/* JRNY Logo */}
             <h1 className="text-4xl font-black text-white tracking-tighter drop-shadow-lg italic transform -skew-x-6 mb-8" 
                 style={{fontFamily: 'system-ui, -apple-system, sans-serif', letterSpacing: '-0.05em'}}>
               JRNY
             </h1>
             
-            {/* Loading Animation */}
             <div className="flex items-center justify-center space-x-2 text-white/80">
               <Loader2 className="w-6 h-6 animate-spin" />
               <span className="text-lg font-medium">Setting up your journey...</span>
             </div>
             
-            {/* Subtitle */}
             <p className="text-white/60 mt-4 text-sm">
               Checking for existing training plans
             </p>
@@ -133,7 +172,20 @@ export default function DashboardPage() {
     return <TrainingDashboard />;
   }
 
-  // If no training plan, show onboarding
+  // If no training plan, show setup form using existing RaceOverview component
+  const defaultBlock: TrainingBlock = {
+    id: 'new',
+    name: 'My Training Block',
+    race_name: '',
+    race_date: '',
+    goal_time: '',
+    start_date: new Date().toISOString().split('T')[0], // Today
+    total_weeks: 18,
+    current_week: 1,
+    taper_start_week: 16,
+    status: 'active'
+  };
+
   return (
     <div className="max-w-md mx-auto min-h-screen relative overflow-hidden">
       {/* Valencia Background */}
@@ -170,17 +222,32 @@ export default function DashboardPage() {
               <h2 className="text-xl font-bold text-white mb-3">
                 Welcome to JRNY! 🏃‍♂️
               </h2>
-              <p className="text-white/80 text-sm leading-relaxed">
-                Let's get your marathon training set up. Upload your coaching plan photos 
-                and we'll sync them with your Strava activities to track your progress.
+              <p className="text-white/80 text-sm leading-relaxed mb-4">
+                Let's set up your marathon training plan. First, connect your Strava account, 
+                then fill in your race details to start tracking your progress.
               </p>
+              
+              {/* Strava Connection Button */}
+              <button
+                onClick={() => window.location.href = '/api/auth/strava'}
+                className="w-full bg-[#FC4C02] hover:bg-[#E8440B] text-white px-4 py-3 rounded-md font-medium mb-4 flex items-center justify-center gap-2"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.917"/>
+                </svg>
+                Connect Strava First
+              </button>
             </div>
           </div>
         </div>
 
-        {/* Plan Import Interface */}
+        {/* Race Setup Form - Reusing your existing component */}
         <div className="px-6 pb-24">
-          <PlanImportInterface onPlanCreated={handlePlanCreated} />
+          <RaceOverview 
+            trainingBlock={defaultBlock}
+            currentWeek={1}
+            onUpdate={createTrainingBlock}
+          />
         </div>
       </div>
     </div>
