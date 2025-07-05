@@ -530,26 +530,23 @@ export default function TrainingDashboard() {
       
       <div className="relative z-10">
         {/* Header */}
-        <div className="sticky top-0 z-20">
-          <div className="py-3">
-            <h1 className="text-xl font-black text-center text-white tracking-tighter drop-shadow-lg italic transform -skew-x-6" style={{fontFamily: 'system-ui, -apple-system, sans-serif', letterSpacing: '-0.05em'}}>
-              JRNY
-            </h1>
-          // Replace your current Sync Strava button with this for a cleaner look:
-<button
-  title="Sync Strava"
-  onClick={async () => {
-    await fetch('/api/strava/sync', { method: 'POST', credentials: 'include' });
-    window.location.reload();
-  }}
-  className="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-full p-2 ml-2 transition"
->
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582M20 20v-5h-.581M5.635 19.364A9 9 0 104.582 9.582" />
-  </svg>
-</button>
-          </div>
-        </div>
+      <div className="py-3 flex items-center justify-center">
+  <h1 className="text-xl font-black text-center text-white tracking-tighter drop-shadow-lg italic transform -skew-x-6" style={{fontFamily: 'system-ui, -apple-system, sans-serif', letterSpacing: '-0.05em'}}>
+    JRNY
+  </h1>
+  <button
+    title="Sync Strava"
+    onClick={async () => {
+      await fetch('/api/strava/sync', { method: 'POST', credentials: 'include' });
+      window.location.reload();
+    }}
+    className="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-full p-2 ml-2 transition"
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582M20 20v-5h-.581M5.635 19.364A9 9 0 104.582 9.582" />
+    </svg>
+  </button>
+</div>
 
         {/* Content */}
         <div className="p-6 pb-24">
